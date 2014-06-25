@@ -24,34 +24,34 @@ def gauss(fdtd):
 	omega = 6*np.pi*fdtd.fop
 	func = lambda t: np.exp(-np.power(t-2*fdtd.t0,2) / width)
 	for k,t in indexed(fdtd.td):
-		fdtd.Ez[k,0,:] = func(t)
+		fdtd.Ez[k,:,0] = func(t)
 
 a = YeeCuda()
 a.setFreq(2.4E9)
 
-#a.bound['Ez'][0,:] = 0
-#a.bound['Ez'][-1,:] = 0
-#a.bound['Ez'][20:50+1,40:60+1] = 0
+a.bound['Ez'][0,:] = 0
+a.bound['Ez'][-1,:] = 0
+a.bound['Ez'][20:50+1,40:60+1] = 0
 #
-#a.bound['Hx'][0,:] = 0
-#a.bound['Hx'][-1,:] = 0
-#a.bound['Hx'][:,0] = 0
-#a.bound['Hx'][:,-1] = 0
-#a.bound['Hx'][20,40:60+1] = 0
-#a.bound['Hx'][50,40:60+1] = 0
+a.bound['Hx'][0,:] = 0
+a.bound['Hx'][-1,:] = 0
+a.bound['Hx'][:,0] = 0
+a.bound['Hx'][:,-1] = 0
+a.bound['Hx'][20,40:60+1] = 0
+a.bound['Hx'][50,40:60+1] = 0
 #
-#a.bound['Hy'][20:50+1,40] = 0
-#a.bound['Hy'][20:50+1,60] = 0
+a.bound['Hy'][20:50+1,40] = 0
+a.bound['Hy'][20:50+1,60] = 0
 
-a.run(gauss,t=200)
+a.run(gauss,t=1000)
 
 #%%Plot
 fig = plt.figure()
 ims = []
 
-
-for k in range(int(len(a.td))):
-    im = plt.imshow(a.Ez[k,:,:])
+pace = 5
+for s in np.arange(0,len(a.td),pace):
+    im = plt.imshow(a.Ez[s,:,:])
     ims.append([im])
 
 ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=0)

@@ -6,6 +6,9 @@ Copyright (c) 2014 Leonardo Kewitz
 Created on Fri Jun 20 12:15:15 2014
 """
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import mpl_toolkits.mplot3d.axes3d as p3
 from ctypes import *
 
 # Macros
@@ -20,7 +23,7 @@ pi = f(np.pi)  # Double precision pi.
 e = np.exp(f(1))  # Exponential as unit.
 
 class YeeStruct(Structure):
-    _fields_ = [("lenX", c_uint), ("lenY", c_uint), ("lenT", c_uint),
+    _fields_ = [("lenX", c_int), ("lenY", c_int), ("lenT", c_int),
                 ("Z", c_double), ("CEy", c_double),("CEx", c_double),("CH",
                 c_double)]
 
@@ -96,9 +99,8 @@ class YeeCuda:
     pack(self.cEz, self.Ez)
     if self.verbose: print "Packing input values..."
 
-    self.params = YeeStruct(sx,sy,st,z,CEy,CEx,CH)
     if self.verbose: print "Starting simulation..."
-    fast.run(self.params,t,byref(self.cEz),byref(boundEz),byref(boundHx),byref(boundHy))
+    fast.run(sx,sy,st,c_double(CEy),c_double(CEx),c_double(CH),byref(self.cEz),byref(boundEz),byref(boundHx),byref(boundHy))
     if self.verbose: print "Unpacking Values..."
     self.Ez = unpack(self.cEz, (st,sy,sx))
 
@@ -118,7 +120,7 @@ def gauss(fdtd):
 	omega = 6*np.pi*fdtd.fop
 	func = lambda t: np.exp(-np.power(t-2*fdtd.t0,2) / width)
 	for k,t in indexed(fdtd.td):
-		fdtd.Ez[k,:,0] = func(t)
+		fdtd.Ez[k,:,50] = func(t)
 
 if __name__ == '__main__':
   print bool(fast.checkCuda())
@@ -138,6 +140,7 @@ if __name__ == '__main__':
 #
 #  a.bound['Hy'][20:50+1,40] = 0
 #  a.bound['Hy'][20:50+1,60] = 0
-
+  plt.figure()
   a.run(gauss,t=100)
-  plt.imshow(a.Ez[1,:,:])
+  plt.imshow(a.Ez[3,:,:])
+  plt.show()

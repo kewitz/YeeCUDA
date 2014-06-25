@@ -10,94 +10,98 @@
 #include "snippets.cuh"
 
 struct Yee{
-	unsigned int lenX, lenY, lenT;
+	int lenX;
+	int lenY;
+	int lenT;
 	double Z;
 	double CEy;
 	double CEx;
 	double CH;
 };
-// #define iS (x, y, lenx) ((lenx*y) + x)
-// #define iST (x, y, k, lenx, leny) ((lenx*leny*k) + (lenx*y) + x)
+
 // Global index in Space domain.
-__device__ __inline__ uint iS(unsigned int x, unsigned int y, unsigned int lenx, unsigned int leny){
-	uint p = (y * lenx) + x;
+__device__ int iS(int x, int y, int grid_width){
+	int p = (y * grid_width) + x;
 	return p;
 }
 // Global index in Space-Time domain.
-__device__ __inline__ uint iST(unsigned int x, unsigned int y, unsigned int k, unsigned int lenx, unsigned int leny){
-	uint p = (k*lenx*leny) + iS(x,y,lenx,leny);
+__device__ int iST(int x, int y, int k, int sx, int sy){
+	int p = x + (y*sx) + (k*sx*sy);
 	return p;
 }
 
-__device__ __inline__ int calcE(Yee s, uint3 gp) {
+__device__ int calcE(int x, int y, int lenX, int lenY) {
 	int r = 0;
-	if (gp.x > 0 && gp.y > 0 && gp.x < s.lenX - 1 && gp.y < s.lenY -1)
+	if (x > 0 && y > 0 && x < lenX - 1 && y < lenY -1)
 		r = 1;
 	return r;
 }
-__device__ __inline__ int calcH(Yee s, uint3 gp) {
+__device__ int calcH(int x, int y, int lenX, int lenY) {
 	int r = 0;
-	if (gp.x < s.lenX - 1 && gp.y < s.lenY - 1)
+	if (x < lenX - 1 && y < lenY - 1)
 		r = 1;
 	return r;
 }
 
-__global__ void yeeKernel(Yee s, int ks, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
+__global__ void yeeKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
 	// Reconhecimento espacial.
-	uint3 gp = __getGlobalPosition(blockIdx, blockDim, threadIdx);
-	if (gp.x >= s.lenX || gp.y >= s.lenY)
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+	if (x >= lenX || y >= lenY)
 		return;
 
-	unsigned int is = iS(gp.x, gp.y, s.lenX, s.lenY);
+	int gw = lenX;
+	int gh = lenY;
+	int is = (y * gw) + x;
 
-	int doE = calcE(s, gp);
-	int doH = calcH(s, gp);
+	int doE = calcE(x, y, lenX, lenY);
+	int doH = calcH(x, y, lenX, lenY);
 
 	bool bEz = boundEz[is] + doE == 2;
 	bool bHx = boundHx[is] + doH == 2;
 	bool bHy = boundHy[is] + doH == 2;
+	double _hy, _hx, _ez;
 
-	unsigned int k,x=gp.x,y=gp.y;
-	double _hy = 0.0, _hx = 0.0, _ez = Ez[iST(x,y,0,s.lenX,s.lenY)];
+	if (k==0) { _hy = 0; _hx = 0; }
+	else { _hy = Hy[iS(x,y,gw)]; _hx = Hx[iS(x,y,gw)]; }
+	_ez = Ez[iST(x,y,k,gw,gh)];
 
-	for(k = 0; k < ks-1; k++)
-	{
-		__syncthreads();
-		// Calcula HX
+	if (h) {
+	// Calcula HX
 		if (bHx) {
-			_hx = _hx - s.CH * (Ez[iST(x+1,y,k,s.lenX,s.lenY)] - _ez);
+			_hx = _hx - CH * (Ez[iST(x+1,y,k,gw,gh)] - _ez);
 			Hx[is] = _hx;
 		}
 		// Calcula HY
 		if (bHy) {
-			_hy = _hy + s.CH * (Ez[iST(x,y+1,k,s.lenX,s.lenY)] - _ez);
+			_hy = _hy + CH * (Ez[iST(x,y+1,k,gw,gh)] - _ez);
 			Hy[is] = _hy;
 		}
-		__syncthreads();
-
-		// Calcula Ez
-		if (bEz) {
-			_ez = _ez + (s.CEx * ( _hy - Hy[iS(x,y-1,s.lenX,s.lenY)] )) - (s.CEy * (_hx - Hx[iS(x-1,y,s.lenX,s.lenY)]));
-			Ez[iST(x,y,k+1,s.lenX,s.lenY)] = _ez;
-		}
-		__syncthreads();
-
 	}
 
+	else {
+	// Calcula Ez
+		if (bEz) {
+			_ez = _ez + (CEx * ( _hy - Hy[iS(x,y-1,gw)] )) - (CEy * (_hx - Hx[iS(x-1,y,gw)]));
+			Ez[iST(x,y,k+1,gw,gh)] = _ez;
+		}
+	}
+
+	return;
 }
 
 
-extern "C" int run(Yee s, int iter, double * Ez, int * boundEz, int * boundHx, int * boundHy) {
+extern "C" int run(int lenX, int lenY, int lenT, double CEy, double CEx, double CH,  double * Ez, int * boundEz, int * boundHx, int * boundHy) {
 
 	// Mallocs
 	double * dEz, * dHx, * dHy;
-	size_t s_ez = sizeof(double)*s.lenX*s.lenY*s.lenT;
+	size_t s_ez = sizeof(double)*lenX*lenY*lenT;
 	CudaSafeCall(cudaMalloc(&dEz, s_ez));
-	CudaSafeCall(cudaMalloc(&dHx, sizeof(double)*s.lenX*s.lenY));
-	CudaSafeCall(cudaMalloc(&dHy, sizeof(double)*s.lenX*s.lenY));
+	CudaSafeCall(cudaMalloc(&dHx, sizeof(double)*lenX*lenY));
+	CudaSafeCall(cudaMalloc(&dHy, sizeof(double)*lenX*lenY));
 
 	int * dbEz, * dbHx, * dbHy;
-	size_t bs = sizeof(int)*s.lenX*s.lenY;
+	size_t bs = sizeof(int)*lenX*lenY;
 	CudaSafeCall(cudaMalloc(&dbEz, bs));
 	CudaSafeCall(cudaMalloc(&dbHx, bs));
 	CudaSafeCall(cudaMalloc(&dbHy, bs));
@@ -110,8 +114,11 @@ extern "C" int run(Yee s, int iter, double * Ez, int * boundEz, int * boundHx, i
 
 	// Launch Settings
 	const dim3 threads(BSIZE,BSIZE);
-	const dim3 blocks(1 + s.lenX/threads.x, 1 + s.lenY/threads.y);
-	yeeKernel<<<blocks, threads>>>(s, iter, dEz, dHx, dHy, dbEz, dbHx, dbHy);
+	const dim3 blocks(1 + lenX/threads.x, 1 + lenY/threads.y);
+	for(int k = 0; k < lenT; k++) {
+		yeeKernel<<<blocks, threads>>>(lenX, lenY, true, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
+		yeeKernel<<<blocks, threads>>>(lenX, lenY, false, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
+	}
 	CudaCheckError();
 
 	CudaSafeCall(cudaMemcpy(Ez, dEz, s_ez, cudaMemcpyDeviceToHost));
@@ -132,19 +139,18 @@ extern "C" int checkCuda(){
   return deviceCount;
 }
 
-void test(){
-	Yee p = {10,10,5,376.730313475,188.365156737,188.365156737,0.00132720936467};
+void test() {
 	double ez[500] = {};
+	ez[1] = 2.0;
+	double H[100] = {};
 	int bound[100] = {};
-	for(int k = 0; k < 100; k++)
-		bound[k] = 1;
-
-	run(p,2,&ez[0],&bound[0],&bound[0],&bound[0]);
+	for (int i = 0; i < 100; ++i) {
+		bound[i] = 1;
+	}
 }
 
 int main(){
 	int theresCuda = checkCuda();
-	unsigned int a = 0;
-	int p = a+theresCuda;
-	return theresCuda;
+	test();
+	return 1;
 }
