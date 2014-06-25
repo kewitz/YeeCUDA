@@ -12,7 +12,6 @@ Created on Wed May 28 11:11:30 2014
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import mpl_toolkits.mplot3d.axes3d as p3
 
 from yeecuda import YeeCuda
 
@@ -21,43 +20,53 @@ indexed = lambda l, offset=0: zip(np.arange(len(l))+offset,l)
 
 def gauss(fdtd):
 	width = (2*np.power(fdtd.tal,2))
-	omega = 6*np.pi*fdtd.fop
 	func = lambda t: np.exp(-np.power(t-2*fdtd.t0,2) / width)
 	for k,t in indexed(fdtd.td):
-		fdtd.Ez[k,:,0] = func(t)
+		fdtd.Ez[k,:,2] = func(t)
 
 a = YeeCuda()
 a.setFreq(2.4E9)
 
-a.bound['Ez'][0,:] = 0
-a.bound['Ez'][-1,:] = 0
-a.bound['Ez'][20:50+1,40:60+1] = 0
-#
-a.bound['Hx'][0,:] = 0
-a.bound['Hx'][-1,:] = 0
-a.bound['Hx'][:,0] = 0
-a.bound['Hx'][:,-1] = 0
-a.bound['Hx'][20,40:60+1] = 0
-a.bound['Hx'][50,40:60+1] = 0
-#
-a.bound['Hy'][20:50+1,40] = 0
-a.bound['Hy'][20:50+1,60] = 0
+a.bound['Ez'][:,2] = 2
+
+a.bound['Ez'][75:126,75:126] = 0
+a.bound['Hy'][75:126,75] = 0
+a.bound['Hy'][75:126,125] = 0
+a.bound['Hx'][75,75:126] = 0
+a.bound['Hx'][125,75:126] = 0
 
 a.run(gauss,t=1000)
 
 #%%Plot
-fig = plt.figure()
-ims = []
+def anim1D(vector, time=None):
+	time = np.arange(len(vector[:,0])) if time is None else time
+	fig, ax = plt.subplots()
+	line, = ax.plot(vector[0,:])
+	plt.ylim(vector.min(),vector.max())
+	plt.grid()
 
-pace = 5
-for s in np.arange(0,len(a.td),pace):
-    im = plt.imshow(a.Ez[s,:,:])
-    ims.append([im])
+	def animate(s):
+		line.set_ydata(vector[s,:])
+		return line,
+	
+	animate = animation.FuncAnimation(fig, animate, time, interval=20)
+	plt.show()
+	
+def anim2D(vector, time=None):
+	time = np.arange(len(vector[:,0,0])) if time is None else time
+	fig = plt.figure()
+	ims = []
+	vmin,vmax = (vector.min(),vector.max())
+	for k in time:
+		im = plt.imshow(vector[k,:,:],vmin=vmin, vmax=vmax)
+		ims.append([im])
+	ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=1000)
+	plt.show()
 
-ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=0)
-
-plt.show()
-
+anim2D(a.Ez, np.arange(0,len(a.td),3))
+print a.bound['Ez'], 'Ez'
+print a.bound['Hx'], 'Hx'
+print a.bound['Hy'], 'Hy'
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']
 #writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)

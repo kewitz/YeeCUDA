@@ -6,9 +6,6 @@ Copyright (c) 2014 Leonardo Kewitz
 Created on Fri Jun 20 12:15:15 2014
 """
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import mpl_toolkits.mplot3d.axes3d as p3
 from ctypes import *
 
 # Macros
@@ -46,21 +43,31 @@ class YeeCuda:
     self.lamb = self.vp/fop
     self.t0 = 1.0/fop
     self.tal = self.t0/(2*np.sqrt(2*np.log(2)))
-    self.dx = self.lamb/10.0
-    self.dy = self.lamb/10.0
+    self.dx = self.lamb/8.0
+    self.dy = self.lamb/8.0
     self.dtal = self.dx/2.0
     self.dt = self.dtal/self.vp
 
     # Domínios
-    self.xd = np.arange(0,self.lamb*10,self.dx,dtype=np.float64)
-    self.yd = np.arange(0,self.lamb*10,self.dy,dtype=np.float64)
+    self.xd = np.arange(0,self.lamb*20,self.dx,dtype=np.float64)
+    self.yd = np.arange(0,self.lamb*20,self.dy,dtype=np.float64)
+
+    dbound = np.ones((len(self.yd),len(self.xd)),dtype=np.int)
+    dbound[0,:] = 0
+    dbound[-1,:] = 0
+    dbound[:,0] = 0
+    dbound[:,-1] = 0
 
     self.bound = {
-        'Ez': np.ones((len(self.yd),len(self.xd)),dtype=np.int),
-        'Hx': np.ones((len(self.yd),len(self.xd)),dtype=np.int),
-        'Hy': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
+        'Ez': dbound.copy(),
+        'Hy': dbound.copy(),
+        'Hx': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
       }
-
+    self.bound['Ez'][-1,1:-1] = 1
+    #self.bound['Ez'][-1,1:-1] = 1
+    
+   
+				
   def setLambda(self, lamb):
     """
     Ajusta os parâmetros da simulação de acordo com o comprimento de on-
@@ -106,41 +113,11 @@ class YeeCuda:
 
 
 def pack(mem, array):
-  flat = array.flatten()
-  size = len(flat)
-  for i in range(size):
-    mem[i] = flat[i]
+	flat = array.flatten()
+	size = len(flat)
+	for i in range(size):
+		mem[i] = flat[i]
 
 def unpack(mem, shape):
   flat = np.array([i for i in mem])
   return flat.reshape(shape)
-
-def gauss(fdtd):
-	width = (2*np.power(fdtd.tal,2))
-	omega = 6*np.pi*fdtd.fop
-	func = lambda t: np.exp(-np.power(t-2*fdtd.t0,2) / width)
-	for k,t in indexed(fdtd.td):
-		fdtd.Ez[k,:,50] = func(t)
-
-if __name__ == '__main__':
-  print bool(fast.checkCuda())
-  a = YeeCuda()
-  a.setFreq(2.4E9)
-
-#  a.bound['Ez'][0,:] = 0
-#  a.bound['Ez'][-1,:] = 0
-#  a.bound['Ez'][20:50+1,40:60+1] = 0
-#
-#  a.bound['Hx'][0,:] = 0
-#  a.bound['Hx'][-1,:] = 0
-#  a.bound['Hx'][:,0] = 0
-#  a.bound['Hx'][:,-1] = 0
-#  a.bound['Hx'][20,40:60+1] = 0
-#  a.bound['Hx'][50,40:60+1] = 0
-#
-#  a.bound['Hy'][20:50+1,40] = 0
-#  a.bound['Hy'][20:50+1,60] = 0
-  plt.figure()
-  a.run(gauss,t=100)
-  plt.imshow(a.Ez[3,:,:])
-  plt.show()
