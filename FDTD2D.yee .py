@@ -35,7 +35,7 @@ a.bound['Hy'][75:126,125] = 0
 a.bound['Hx'][75,75:126] = 0
 a.bound['Hx'][125,75:126] = 0
 
-a.run(gauss,t=1000)
+a.run(gauss,t=800)
 
 #%%Plot
 def anim1D(vector, time=None):
@@ -55,18 +55,17 @@ def anim1D(vector, time=None):
 def anim2D(vector, time=None):
 	time = np.arange(len(vector[:,0,0])) if time is None else time
 	fig = plt.figure()
-	ims = []
 	vmin,vmax = (vector.min(),vector.max())
+	im = plt.imshow(vector[0,:,:], cmap='jet',vmin=vmin,vmax=vmax)
+	fig.colorbar(im)
+	ims = []
 	for k in time:
-		im = plt.imshow(vector[k,:,:],vmin=vmin, vmax=vmax)
+		im = plt.imshow(vector[k,:,:], cmap='jet',vmin=vmin,vmax=vmax)
 		ims.append([im])
 	ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=1000)
 	plt.show()
 
-anim2D(a.Ez, np.arange(0,len(a.td),3))
-print a.bound['Ez'], 'Ez'
-print a.bound['Hx'], 'Hx'
-print a.bound['Hy'], 'Hy'
+anim2D(a.Ez, np.arange(0,len(a.td),5))
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']
 #writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)

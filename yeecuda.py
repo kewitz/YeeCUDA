@@ -64,10 +64,9 @@ class YeeCuda:
         'Hx': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
       }
     self.bound['Ez'][-1,1:-1] = 1
-    #self.bound['Ez'][-1,1:-1] = 1
-    
-   
-				
+
+
+
   def setLambda(self, lamb):
     """
     Ajusta os parâmetros da simulação de acordo com o comprimento de on-
@@ -103,8 +102,8 @@ class YeeCuda:
 
     if self.verbose: print "Recording input values..."
     fx(self)
-    pack(self.cEz, self.Ez)
     if self.verbose: print "Packing input values..."
+    pack(self.cEz, self.Ez)
 
     if self.verbose: print "Starting simulation..."
     fast.run(sx,sy,st,c_double(CEy),c_double(CEx),c_double(CH),byref(self.cEz),byref(boundEz),byref(boundHx),byref(boundHy))
