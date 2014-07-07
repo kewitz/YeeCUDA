@@ -65,6 +65,12 @@ def anim2D(vector, time=None):
 	ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=1000)
 	plt.show()
 
+def snap2(vector):
+	fig = plt.figure()
+	im = plt.imshow(vector,cmap='jet')
+	fig.colorbar(im)
+	plt.show()
+
 anim2D(a.Ez, np.arange(0,len(a.td),5))
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']

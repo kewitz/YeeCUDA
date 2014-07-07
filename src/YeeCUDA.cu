@@ -30,7 +30,45 @@ __device__ int iST(int x, int y, int k, int sx, int sy){
 	return p;
 }
 
-__global__ void yeeKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
+
+__global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
+	// Reconhecimento espacial.
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+	if (x >= lenX || y >= lenY)
+		return;
+
+	int gw = lenX;
+	int gh = lenY;
+	int is = iS(x,y,gw);
+	int ist = iST(x,y,k,gw,gh);
+
+	int bHx = boundHx[is];
+	int bHy = boundHy[is];
+
+	double _hx = 0.0, _hy = 0.0;
+	if (k > 0) {
+		_hx = Hx[iST(x,y,k-1,gw,gh)];
+		_hy = Hy[iST(x,y,k-1,gw,gh)];
+	}
+	double _ez = Ez[ist];
+	// Calcula HX
+	if (bHx == 1) {
+		Hx[ist] = _hx - CH * (Ez[iST(x+1,y,k,gw,gh)] - _ez);
+	}
+	else
+		Hx[ist] = 0.0;
+	// Calcula HY
+	if (bHy == 1) {
+		Hy[ist] = _hy + CH * (Ez[iST(x,y+1,k,gw,gh)] - _ez);
+	}
+	else
+		Hy[ist] = 0.0;
+
+	return;
+}
+
+__global__ void ElectricKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
 	// Reconhecimento espacial.
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -43,35 +81,10 @@ __global__ void yeeKernel(int lenX, int lenY, bool h, int k, double CEy, double 
 	int ist = iST(x,y,k,gw,gh);
 
 	int bEz = boundEz[is];
-	int bHx = boundHx[is];
-	int bHy = boundHy[is];
 
-	if (h) {
-		double _hx = 0.0, _hy = 0.0;
-		if (k > 0) {
-			_hx = Hx[iST(x,y,k-1,gw,gh)];
-			_hy = Hy[iST(x,y,k-1,gw,gh)];
-		}
-		double _ez = Ez[ist];
-		// Calcula HX
-		if (bHx == 1) {
-			Hx[ist] = _hx - CH * (Ez[iST(x+1,y,k,gw,gh)] - _ez);
-		}
-		else
-			Hx[ist] = 0.0;
-		// Calcula HY
-		if (bHy == 1) {
-			Hy[ist] = _hy + CH * (Ez[iST(x,y+1,k,gw,gh)] - _ez);
-		}
-		else
-			Hy[ist] = 0.0;
-	}
-
-	else {
-		// Calcula Ez
-		if (bEz == 1)
-			Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x,y,k,gw,gh)] + (CEx * ( Hy[iST(x,y,k,gw,gh)] - Hy[iST(x,y-1,k,gw,gh)] )) - (CEy * (Hx[iST(x,y,k,gw,gh)] - Hx[iST(x-1,y,k,gw,gh)]));
-	}
+	// Calcula Ez
+	if (bEz == 1)
+		Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x,y,k,gw,gh)] + (CEx * ( Hy[iST(x,y,k,gw,gh)] - Hy[iST(x,y-1,k,gw,gh)] )) - (CEy * (Hx[iST(x,y,k,gw,gh)] - Hx[iST(x-1,y,k,gw,gh)]));
 
 	return;
 }
@@ -102,9 +115,9 @@ extern "C" int run(int lenX, int lenY, int lenT, double CEy, double CEx, double 
 	const dim3 threads(BSIZE,BSIZE);
 	const dim3 blocks(1 + lenX/threads.x, 1 + lenY/threads.y);
 	for(int k = 0; k < lenT; k++) {
-		yeeKernel<<<blocks, threads>>>(lenX, lenY, true, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
+		MagneticKernel<<<blocks, threads>>>(lenX, lenY, true, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
 		cudaDeviceSynchronize();
-		yeeKernel<<<blocks, threads>>>(lenX, lenY, false, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
+		ElectricKernel<<<blocks, threads>>>(lenX, lenY, false, k, CEy, CEx, CH, dEz, dHx, dHy, dbEz, dbHx, dbHy);
 		cudaDeviceSynchronize();
 	}
 	CudaCheckError();
