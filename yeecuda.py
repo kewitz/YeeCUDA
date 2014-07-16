@@ -50,7 +50,7 @@ class YeeCuda:
 
     # Domínios
     self.xd = np.arange(0,self.lamb*20,self.dx,dtype=np.float64)
-    self.yd = np.arange(0,self.lamb*20,self.dy,dtype=np.float64)
+    self.yd = np.arange(0,self.lamb*40,self.dy,dtype=np.float64)
 
     dbound = np.ones((len(self.yd),len(self.xd)),dtype=np.int)
     dbound[0,:] = 0
@@ -60,10 +60,11 @@ class YeeCuda:
 
     self.bound = {
         'Ez': dbound.copy(),
-        'Hy': dbound.copy(),
-        'Hx': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
+        'Hx': dbound.copy(),
+        'Hy': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
       }
     self.bound['Ez'][-1,1:-1] = 1
+    #self.bound['Ez'][1,1:-1] = 0
 
 
 
