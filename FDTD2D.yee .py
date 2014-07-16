@@ -13,8 +13,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from scipy import misc
-
 from yeecuda import YeeCuda
 
 # Macros
@@ -26,11 +24,11 @@ def gauss(fdtd):
 	for k,t in indexed(fdtd.td):
 		fdtd.Ez[k,:,2] = func(t)
 
-a = YeeCuda()
+a = YeeCuda('./parabola.png')
+#a = YeeCuda([200,300])
 a.setFreq(2.4E9)
-
 a.bound['Ez'][:,2] = 2
-a.bound['Ez'][150:221,50:52] = 0
+#a.bound['Ez'][140:160,90:110] = 0
 
 a.run(gauss,t=800)
 
@@ -81,7 +79,7 @@ def snap1(vector):
 	plt.ylabel('$Ez$')
 	plt.show()
 	
-anim2D(a.Ez[0:400,:,:])
+anim2D(a.Ez)
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']
 #writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)

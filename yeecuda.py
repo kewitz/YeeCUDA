@@ -7,6 +7,7 @@ Created on Fri Jun 20 12:15:15 2014
 """
 import numpy as np
 from ctypes import *
+from scipy import misc
 
 # Macros
 indexed = lambda l, offset=0: zip(np.arange(len(l))+offset,l)
@@ -26,12 +27,21 @@ class YeeStruct(Structure):
 
 class YeeCuda:
   """ Classe de cálculo FDTD 2D. """
-  def __init__(self, verbose = True):
+  def __init__(self, arg= False, verbose = True):
     self.vp = f(299792458.0)
     self.eps = f(8.854187817E-12)
     self.mu = f(pi * 4E-7)
     self.sigma = f(5E-15)
     self.verbose = verbose
+    if type(arg) is str:
+        image = misc.imread(arg, True)
+        self.im = (image/255).round()
+        self.sy, self.sx = list(self.im.shape)
+    elif type(arg) is list:
+        self.sx, self.sy = arg
+        self.im = np.ones((self.sy,self.sx),dtype=np.int)
+    else:
+        raise Exception("Not a valid argument.")
 
   def setFreq(self, fop):
     """
@@ -49,24 +59,26 @@ class YeeCuda:
     self.dt = self.dtal/self.vp
 
     # Domínios
-    self.xd = np.arange(0,self.lamb*20,self.dx,dtype=np.float64)
-    self.yd = np.arange(0,self.lamb*40,self.dy,dtype=np.float64)
+    self.xd = np.arange(self.sx,dtype=np.float64)*self.dx
+    self.yd = np.arange(self.sy,dtype=np.float64)*self.dy
 
-    dbound = np.ones((len(self.yd),len(self.xd)),dtype=np.int)
+    dbound = np.ones((self.sy,self.sx),dtype=np.int)
     dbound[0,:] = 0
     dbound[-1,:] = 0
     dbound[:,0] = 0
     dbound[:,-1] = 0
 
     self.bound = {
-        'Ez': dbound.copy(),
+        'Ez': np.array(self.im, dtype=np.int),
         'Hx': dbound.copy(),
-        'Hy': np.ones((len(self.yd),len(self.xd)),dtype=np.int)
-      }
+        'Hy': np.ones((self.sy,self.sx),dtype=np.int)
+    }
+    self.bound['Ez'][0,:] = 0
+    self.bound['Ez'][-1,:] = 0
+    self.bound['Ez'][:,0] = 0
+    self.bound['Ez'][:,-1] = 0
     self.bound['Ez'][-1,1:-1] = 1
-    #self.bound['Ez'][1,1:-1] = 0
-
-
+    
 
   def setLambda(self, lamb):
     """
@@ -77,7 +89,7 @@ class YeeCuda:
 
   def makeDomains(self, iteractions, skip):
     self.td = np.arange(0,self.dt*iteractions,self.dt*skip,dtype=np.float64)
-    self.Ez = np.zeros((len(self.td),len(self.yd),len(self.xd)),dtype=np.float64)
+    self.Ez = np.zeros((len(self.td),self.sy,self.sx),dtype=np.float64)
 
   def run(self, fx, t=500, skip=1):
     """ Executa o FDTD para os domínios configurados. """
@@ -87,7 +99,7 @@ class YeeCuda:
     CEy = z*self.dtal/self.dy
     CEx = z*self.dtal/self.dx
     CH = (1.0/z)*self.dtal/self.dx
-    st,sx,sy = (len(self.td),len(self.xd),len(self.yd))
+    st,sx,sy = (len(self.td),self.sx,self.sy)
 
     # malloc.
     if self.verbose: print "Allocating memory..."
