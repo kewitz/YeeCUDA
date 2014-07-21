@@ -5,6 +5,7 @@ Copyright (c) 2014 Leonardo Kewitz
 
 Created on Fri Jun 20 12:15:15 2014
 """
+import time
 import numpy as np
 from ctypes import *
 from scipy import misc
@@ -102,35 +103,15 @@ class YeeCuda:
     CH = (1.0/z)*self.dtal/self.dx
     st,sx,sy = (len(self.td),self.sx,self.sy)
 
-    # malloc.
-    if self.verbose: print "Allocating memory..."
-    self.cEz = ( c_double * (sx * sy * st))()
-    boundEz = ( c_int * (sx * sy))()
-    boundHx = ( c_int * (sx * sy))()
-    boundHy = ( c_int * (sx * sy))()
-
-    if self.verbose: print "Packing boundary values..."
-    pack(boundEz, self.bound['Ez'])
-    pack(boundHx, self.bound['Hx'])
-    pack(boundHy, self.bound['Hy'])
-
     if self.verbose: print "Recording input values..."
     fx(self)
-    if self.verbose: print "Packing input values..."
-    pack(self.cEz, self.Ez)
+    if self.verbose: print "Setting memory pointers..."
+    cEz = np.ctypeslib.as_ctypes(self.Ez)
+    boundEz = np.ctypeslib.as_ctypes(self.bound['Ez'])
+    boundHx = np.ctypeslib.as_ctypes(self.bound['Hx'])
+    boundHy = np.ctypeslib.as_ctypes(self.bound['Hy'])
 
-    if self.verbose: print "Starting simulation..."
-    fast.run(sx,sy,st,c_double(CEy),c_double(CEx),c_double(CH),byref(self.cEz),byref(boundEz),byref(boundHx),byref(boundHy))
-    if self.verbose: print "Unpacking Values..."
-    self.Ez = unpack(self.cEz, (st,sy,sx))
-
-
-def pack(mem, array):
-	flat = array.flatten()
-	size = len(flat)
-	for i in range(size):
-		mem[i] = flat[i]
-
-def unpack(mem, shape):
-  flat = np.array([i for i in mem])
-  return flat.reshape(shape)
+    start = time.time()
+    fast.run(sx,sy,st,c_double(CEy),c_double(CEx),c_double(CH),byref(cEz),byref(boundEz),byref(boundHx),byref(boundHy))
+    end = time.time()
+    if self.verbose: print "Simulation took %.2fs for %d nodes." % ((end-start), self.Ez.size)

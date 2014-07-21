@@ -31,7 +31,7 @@ __device__ int iST(int x, int y, int k, int sx, int sy){
 }
 
 
-__global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
+__global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, long * boundEz, long * boundHx, long * boundHy) {
 	// Reconhecimento espacial.
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -43,8 +43,8 @@ __global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, do
 	int is = iS(x,y,gw);
 	int ist = iST(x,y,k,gw,gh);
 
-	int bHx = boundHx[is];
-	int bHy = boundHy[is];
+	long bHx = boundHx[is];
+	long bHy = boundHy[is];
 
 	double _hx = 0.0, _hy = 0.0;
 	if (k > 0) {
@@ -81,7 +81,7 @@ __global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, do
 	return;
 }
 
-__global__ void ElectricKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, int * boundEz, int * boundHx, int * boundHy) {
+__global__ void ElectricKernel(int lenX, int lenY, bool h, int k, double CEy, double CEx, double CH, double * Ez, double * Hx, double * Hy, long * boundEz, long * boundHx, long * boundHy) {
 	// Reconhecimento espacial.
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -114,7 +114,7 @@ __global__ void ElectricKernel(int lenX, int lenY, bool h, int k, double CEy, do
 }
 
 
-extern "C" int run(int lenX, int lenY, int lenT, double CEy, double CEx, double CH,  double * Ez, int * boundEz, int * boundHx, int * boundHy) {
+extern "C" int run(int lenX, int lenY, int lenT, double CEy, double CEx, double CH,  double * Ez, long * boundEz, long * boundHx, long * boundHy) {
 
 	// Mallocs
 	double * dEz, * dHx, * dHy;
@@ -123,8 +123,8 @@ extern "C" int run(int lenX, int lenY, int lenT, double CEy, double CEx, double 
 	CudaSafeCall(cudaMalloc(&dHx, s_ez));
 	CudaSafeCall(cudaMalloc(&dHy, s_ez));
 
-	int * dbEz, * dbHx, * dbHy;
-	size_t bs = sizeof(int)*lenX*lenY;
+	long * dbEz, * dbHx, * dbHy;
+	size_t bs = sizeof(long)*lenX*lenY;
 	CudaSafeCall(cudaMalloc(&dbEz, bs));
 	CudaSafeCall(cudaMalloc(&dbHx, bs));
 	CudaSafeCall(cudaMalloc(&dbHy, bs));
