@@ -77,7 +77,8 @@ class YeeCuda:
     self.bound['Ez'][-1,:] = 0
     self.bound['Ez'][:,0] = 0
     self.bound['Ez'][:,-1] = 0
-    self.bound['Ez'][-1,1:-1] = 1
+    self.bound['Ez'][-1,1:-1] = 2
+    self.bound['Ez'][0,1:-1] = 2
     
 
   def setLambda(self, lamb):

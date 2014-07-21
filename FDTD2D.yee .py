@@ -24,13 +24,17 @@ def gauss(fdtd):
 	for k,t in indexed(fdtd.td):
 		fdtd.Ez[k,:,2] = func(t)
 
-a = YeeCuda('./parabola.png')
-#a = YeeCuda([200,300])
+a = YeeCuda('./circulo.png')
+#a = YeeCuda([100,200])
 a.setFreq(2.4E9)
-a.bound['Ez'][:,2] = 2
-#a.bound['Ez'][140:160,90:110] = 0
-
+a.bound['Ez'][:,2] = 0
+a.bound['Ez'][1,:] = 2
+a.bound['Ez'][:,1] = 2
+a.bound['Ez'][-1,:] = 2
+a.bound['Ez'][:,-1] = 2
 a.run(gauss,t=800)
+
+
 
 #%%Plot
 def anim1D(vector, time=None):
@@ -44,8 +48,9 @@ def anim1D(vector, time=None):
 		line.set_ydata(vector[s,:])
 		return line,
 	
-	animate = animation.FuncAnimation(fig, animate, time, interval=20)
+	ani = animation.FuncAnimation(fig, animate, time, interval=20)
 	plt.show()
+	return ani
 	
 def anim2D(vector, time=None):
 	time = np.arange(len(vector[:,0,0])) if time is None else time
@@ -59,6 +64,7 @@ def anim2D(vector, time=None):
 		ims.append([im])
 	ani = animation.ArtistAnimation(fig, ims, interval=30, blit=True, repeat_delay=1000)
 	plt.show()
+	return ani
 
 #%%P
 def snap2(vector):
@@ -79,8 +85,8 @@ def snap1(vector):
 	plt.ylabel('$Ez$')
 	plt.show()
 	
-anim2D(a.Ez)
+ani = anim2D(a.Ez)
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']
-#writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)
+#writer = Writer(fps=30, metadata=dict(artist='LKK'), bitrate=1800)
 #ani.save('img.mp4', writer=writer)

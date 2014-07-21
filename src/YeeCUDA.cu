@@ -56,12 +56,24 @@ __global__ void MagneticKernel(int lenX, int lenY, bool h, int k, double CEy, do
 	if (bHx == 1) {
 		Hx[ist] = _hx - CH * (Ez[iST(x,y+1,k,gw,gh)] - _ez);
 	}
+	else if (bHx == 2) {
+		if (y <= 1)
+			Hx[ist] = Hx[iST(x,y+1,k-1,gw,gh)];
+		else if (y >= lenY-2)
+			Hx[ist] = Hx[iST(x,y-1,k-1,gw,gh)];
+	}
 	else
 		Hx[ist] = 0.0;
 
 	// Calcula HY
 	if (bHy == 1) {
 		Hy[ist] = _hy + CH * (Ez[iST(x+1,y,k,gw,gh)] - _ez);
+	}
+	else if (bHy == 2) {
+		if (x <= 1)
+			Hy[ist] = Hy[iST(x+1,y,k-1,gw,gh)];
+		else if (x >= lenX-2)
+			Hy[ist] = Hy[iST(x-1,y,k-1,gw,gh)];
 	}
 	else
 		Hy[ist] = 0.0;
@@ -86,6 +98,17 @@ __global__ void ElectricKernel(int lenX, int lenY, bool h, int k, double CEy, do
 	// Calcula Ez
 	if (bEz == 1)
 		Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x,y,k,gw,gh)] + (CEx * ( Hy[iST(x,y,k,gw,gh)] - Hy[iST(x-1,y,k,gw,gh)] )) - (CEy * (Hx[iST(x,y,k,gw,gh)] - Hx[iST(x,y-1,k,gw,gh)]));
+	else if (bEz == 2) {
+		if (y <= 1)
+			Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x,y+1,k,gw,gh)];
+		else if (x <= 1)
+			Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x+1,y,k,gw,gh)];
+		else if (x >= lenX-2)
+			Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x-1,y,k,gw,gh)];
+		else if (y >= lenY-2)
+			Ez[iST(x,y,k+1,gw,gh)] = Ez[iST(x,y-1,k,gw,gh)];
+	}
+
 
 	return;
 }
