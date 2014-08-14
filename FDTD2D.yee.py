@@ -24,17 +24,14 @@ def gauss(fdtd):
 	for k,t in indexed(fdtd.td):
 		fdtd.Ez[k,:,2] = func(t)
 
-a = YeeCuda('./circulo.png')
-#a = YeeCuda([100,200])
-a.setFreq(2.4E9)
-a.bound['Ez'][:,2] = 0
-a.bound['Ez'][1,:] = 2
-a.bound['Ez'][:,1] = 2
-a.bound['Ez'][-1,:] = 2
-a.bound['Ez'][:,-1] = 2
-a.run(gauss,t=800)
-
-
+sim = YeeCuda('./caixa.png', verbose=False)
+sim.setFreq(2.4E9)
+sim.bound['Ez'][:,2] = 0
+sim.bound['Ez'][1,:] = 2
+sim.bound['Ez'][:,1] = 2
+sim.bound['Ez'][-1,:] = 2
+sim.bound['Ez'][:,-1] = 2
+t = sim.run(gauss,t=800,proc="GPU")
 
 #%%Plot
 def anim1D(vector, time=None):
@@ -71,8 +68,8 @@ def snap2(vector):
 	fig = plt.figure()
 	im = plt.imshow(vector,cmap='jet')
 	fig.colorbar(im)
-	rect = plt.Rectangle((75, 75), 50, 50, facecolor="#ffffff", hatch="/")
-	plt.gca().add_patch(rect)
+#	rect = plt.Rectangle((75, 75), 50, 50, facecolor="#ffffff", hatch="/")
+#	plt.gca().add_patch(rect)
 	plt.xlabel('$x$')
 	plt.ylabel('$y$')
 	plt.show()
@@ -85,7 +82,7 @@ def snap1(vector):
 	plt.ylabel('$Ez$')
 	plt.show()
 	
-ani = anim2D(a.Ez)
+ani = anim2D(sim.Ez)
 #%% Save Plot
 #Writer = animation.writers['mencoder_file']
 #writer = Writer(fps=30, metadata=dict(artist='LKK'), bitrate=1800)

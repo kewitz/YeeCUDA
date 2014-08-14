@@ -9,23 +9,22 @@
 #include <cuda_runtime.h>
 #include "snippets.cuh"
 
-struct Yee{
-	int lenX;
-	int lenY;
-	int lenT;
-	double Z;
-	double CEy;
-	double CEx;
-	double CH;
-};
 
 // Global index in Space domain.
-__device__ int iS(int x, int y, int sx){
+int ciS(int x, int y, int sx) {
+	int p = (y * sx) + x;
+	return p;
+}
+__device__ int iS(int x, int y, int sx) {
 	int p = (y * sx) + x;
 	return p;
 }
 // Global index in Space-Time domain.
-__device__ int iST(int x, int y, int k, int sx, int sy){
+int ciST(int x, int y, int k, int sx, int sy) {
+	int p = x + (y*sx) + (k*sx*sy);
+	return p;
+}
+__device__ int iST(int x, int y, int k, int sx, int sy) {
 	int p = x + (y*sx) + (k*sx*sy);
 	return p;
 }
@@ -164,18 +163,7 @@ extern "C" int checkCuda(){
   return deviceCount;
 }
 
-void test() {
-	double ez[500] = {};
-	ez[1] = 2.0;
-	double H[100] = {};
-	int bound[100] = {};
-	for (int i = 0; i < 100; ++i) {
-		bound[i] = 1;
-	}
-}
-
 int main(){
 	int theresCuda = checkCuda();
-	test();
-	return 1;
+	return theresCuda;
 }

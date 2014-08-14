@@ -10,6 +10,13 @@
 
 #define BSIZE 12
 
+void assrt(int assertion, char* message) {
+    if (assertion == 0) {
+        fprintf(stderr, "%s\n", message);
+        exit(1);
+    }
+}
+
 // Device function to return the index of a given thread within a block.
 __device__ __inline__ unsigned int __tIndex(uint3 b, dim3 bd, uint3 t) {
 	return t.x + t.y*bd.x + t.z*bd.x*bd.z;
